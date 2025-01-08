@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\Task;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -49,4 +50,19 @@ class ProjectController extends Controller
         $project->delete();
         return response()->json(null, 204);
     }
+
+    public function overview()
+{
+    $projectsInProgress = Project::where('status', 'active')->count();
+
+    $totalTasks = Task::count();
+    $completedTasks = Task::where('status', 'completed')->count();
+
+    return response()->json([
+        'projects_in_progress' => $projectsInProgress,
+        'total_tasks' => $totalTasks,
+        'completed_tasks' => $completedTasks,
+    ]);
+}
+
 }

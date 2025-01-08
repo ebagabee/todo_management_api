@@ -20,3 +20,4 @@ Route::apiResource('labels', LabelController::class);
 Route::apiResource('comments', CommentController::class);
 
 Route::get('projects/{project}/tasks', [TaskController::class, 'indexForProject']);
+Route::get('/overview', [ProjectController::class, 'overview']);
