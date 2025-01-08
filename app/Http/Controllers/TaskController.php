@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
@@ -34,10 +35,11 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
+        Log::info('Dados recebidos no store:', $request->all());
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:pendente,em andamento,concluída',
+            'status' => 'required|in:pending,in_progress,completed',
         ]);
 
         $task = Task::create($request->all());
@@ -48,9 +50,9 @@ class TaskController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Task $task)
     {
-        //
+        return response()->json($task);
     }
 
     /**
@@ -61,13 +63,16 @@ class TaskController extends Controller
         $request->validate([
             'title' => 'string|max:255',
             'description' => 'nullable|string',
-            'status' => 'in:pendente,em andamento,concluída',
+            'status' => 'in:pending,in_progress,completed',
         ]);
 
         $task->update($request->all());
 
-        if ($request->status === 'concluída' && !$task->completed_at) {
+        if ($request->status === 'concluido' && !$task->completed_at) {
             $task->completed_at = now();
+            $task->save();
+        } elseif ($request->status !== 'concluido' && $task->completed_at) {
+            $task->completed_at = null;
             $task->save();
         }
 
@@ -77,8 +82,9 @@ class TaskController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Task $task)
     {
-        //
+        $task->delete();
+        return response()->json(null, 204);
     }
 }
