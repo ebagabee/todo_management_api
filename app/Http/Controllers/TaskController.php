@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\Project;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -28,6 +29,28 @@ class TaskController extends Controller
 
         return $query->get();
     }
+
+    public function indexForProject(Project $project, Request $request)
+{
+    $query = $project->tasks();
+
+    if ($request->has('status')) {
+        $query->where('status', $request->status);
+    }
+
+    if ($request->has('created_at')) {
+        $query->whereDate('created_at', $request->created_at);
+    }
+
+    $orderBy = $request->input('order_by', 'created_at');
+    $orderDirection = $request->input('order_direction', 'desc');
+
+    if (in_array($orderBy, ['title', 'created_at'])) {
+        $query->orderBy($orderBy, $orderDirection);
+    }
+
+    return $query->get();
+}
 
     public function store(Request $request)
     {
