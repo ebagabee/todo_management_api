@@ -4,84 +4,92 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-        $query = Task::query();
+        $query = Task::with('project', 'labels');
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('date')) {
-            $query->whereDate('created_at', $request->date);
+        if ($request->has('created_at')) {
+            $query->whereDate('created_at', $request->created_at);
         }
 
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
+        $orderBy = $request->input('order_by', 'created_at');
+        $orderDirection = $request->input('order_direction', 'desc');
+
+        if (in_array($orderBy, ['title', 'created_at'])) {
+            $query->orderBy($orderBy, $orderDirection);
+        }
 
         return $query->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        Log::info('Dados recebidos no store:', $request->all());
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validated = $request->validate([
+            'title' => 'required|string',
             'description' => 'nullable|string',
             'status' => 'required|in:pending,in_progress,completed',
+            'priority' => 'required|in:low,medium,high,urgent',
+            'estimated_hours' => 'nullable|numeric',
+            'actual_hours' => 'nullable|numeric',
+            'start_date' => 'nullable|date',
+            'due_date' => 'nullable|date',
+            'project_id' => 'required|exists:projects,id',
         ]);
 
-        $task = Task::create($request->all());
-
-        return response()->json($task, 201);
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Task $task)
-    {
-        return response()->json($task);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Task $task)
-    {
-        $request->validate([
-            'title' => 'string|max:255',
-            'description' => 'nullable|string',
-            'status' => 'in:pending,in_progress,completed',
-        ]);
-
-        $task->update($request->all());
-
-        if ($request->status === 'concluido' && !$task->completed_at) {
-            $task->completed_at = now();
-            $task->save();
-        } elseif ($request->status !== 'concluido' && $task->completed_at) {
-            $task->completed_at = null;
-            $task->save();
+        if ($validated['status'] === 'completed') {
+            $validated['completed_at'] = now();
         }
 
-        return response()->json($task);
+        $task = Task::create($validated);
+
+        if ($request->has('label_ids')) {
+            $task->labels()->sync($request->label_ids);
+        }
+
+        return $task->load('project', 'labels');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    public function show(Task $task)
+    {
+        return $task->load('project', 'labels', 'comments');
+    }
+
+    public function update(Request $request, Task $task)
+    {
+        $validated = $request->validate([
+            'title' => 'string',
+            'description' => 'nullable|string',
+            'status' => 'in:pending,in_progress,completed',
+            'priority' => 'in:low,medium,high,urgent',
+            'estimated_hours' => 'nullable|numeric',
+            'actual_hours' => 'nullable|numeric',
+            'start_date' => 'nullable|date',
+            'due_date' => 'nullable|date',
+            'project_id' => 'exists:projects,id',
+        ]);
+
+        if ($validated['status'] === 'completed' && !$task->completed_at) {
+            $validated['completed_at'] = now();
+        } elseif ($validated['status'] !== 'completed') {
+            $validated['completed_at'] = null;
+        }
+
+        $task->update($validated);
+
+        if ($request->has('label_ids')) {
+            $task->labels()->sync($request->label_ids);
+        }
+
+        return $task->load('project', 'labels');
+    }
+
     public function destroy(Task $task)
     {
         $task->delete();

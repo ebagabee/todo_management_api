@@ -14,6 +14,8 @@ class Task extends Model
         'actual_hours', 'start_date', 'due_date', 'completed_at', 'project_id'
     ];
 
+    protected $dates = ['start_date', 'due_date', 'completed_at'];
+
     public function project()
     {
         return $this->belongsTo(Project::class);
