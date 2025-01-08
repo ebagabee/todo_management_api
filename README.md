@@ -18,7 +18,7 @@ bash
 
 ```bash
 git clone https://github.com/ebagabee/todo_management_api.git
-cd todo-management-backend
+cd todo_management_backend
 ```
 
 2. Instalar dependências
